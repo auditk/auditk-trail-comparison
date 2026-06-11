@@ -1,8 +1,6 @@
 # auditk × TRAIL — cross-taxonomy comparison
 
-Reproducibility code and data for §4.3 of the auditk paper:
-
-> *auditk: an open standard for cryptographically attested intent–enactment drift measurement in agentic AI systems* — arXiv preprint forthcoming.
+Reproducibility code and data for the cross-taxonomy comparison in [auditk](https://github.com/auditk/auditk) — the open standard for cryptographically attested intent–enactment drift measurement in agentic AI systems.
 
 This experiment compares the auditk intent–enactment drift taxonomy against the TRAIL error taxonomy (Deshpande et al., 2025) on 31 SWE-bench traces. The goal is to determine whether the two instruments measure the same construct or distinct ones.
 
@@ -99,7 +97,7 @@ export FIREWORKS_API_KEY=your_key_here
 python src/judge.py
 ```
 
-Stages 2 and 3 can be skipped: the pre-computed output files in `data/` reproduce the paper results directly.
+Stages 2 and 3 can be skipped: the pre-computed output files in `data/` reproduce the experiment results directly.
 
 ---
 
@@ -136,9 +134,9 @@ Each record in the judged file has the shape:
 
 ## Limitations and methodology notes
 
-**Thought-as-intent approximation.** smolagents does not use an explicit pre-plan mechanism like `TodoWrite`. The Thought block is used as a proxy for declared intent. This is an approximation — Thoughts are reasoning, not formal intent declarations. The paper's §4.3 discusses this limitation.
+**Thought-as-intent approximation.** smolagents does not use an explicit pre-plan mechanism like `TodoWrite`. The Thought block is used as a proxy for declared intent. This is an approximation — Thoughts are reasoning, not formal intent declarations.
 
-**Manual review of judge outputs.** The LLM judge (DeepSeek V3) was run without causal masking (the judge sees the full step context, not just what the agent knew at that point). The paper notes this as a known limitation (curse-of-knowledge overestimation). Causal masking is listed as future work.
+**Manual review of judge outputs.** The LLM judge (DeepSeek V3) was run without causal masking (the judge sees the full step context, not just what the agent knew at that point). This is a known limitation (curse-of-knowledge overestimation). Causal masking is listed as future work in the auditk roadmap.
 
 **Peak-end evaluation bias.** Manual review of judge outputs was structured to evaluate each step before seeing subsequent steps, following Kahneman's peak-end effect mitigation protocol.
 
@@ -146,14 +144,14 @@ Each record in the judged file has the shape:
 
 ## Citation
 
-If you use this experiment in your research, please cite the auditk paper:
+If you use this experiment in your research, please cite the auditk software:
 
 ```bibtex
-@misc{dawson2026auditk,
-  title={auditk: an open standard for cryptographically attested intent–enactment drift measurement in agentic AI systems},
+@software{dawson2026auditk,
+  title={auditk: an open standard for cryptographically attested intent--enactment drift measurement in agentic AI systems},
   author={Dawson, Matt},
   year={2026},
-  note={arXiv preprint, forthcoming}
+  url={https://github.com/auditk/auditk}
 }
 ```
 
