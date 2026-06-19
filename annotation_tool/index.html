@@ -24,6 +24,7 @@
     --conf-low: #94a3b8;
     --conf-med: #f59e0b;
     --conf-high: #22c55e;
+    --flag-color: #f97316;
     --radius: 8px;
   }
 
@@ -218,6 +219,25 @@
     background: #0d1117;
     color: #c9d1d9;
   }
+
+  /* ── Copy button row ─────────────────────────────────── */
+  #copy-row {
+    display: flex;
+    justify-content: flex-end;
+  }
+  #btn-copy {
+    padding: 5px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    outline: none;
+  }
+  #btn-copy:hover { border-color: var(--accent); color: var(--accent-hover); }
+  #btn-copy.copied { color: var(--faithful); border-color: var(--faithful); }
 
   /* ── Collapsible panels ──────────────────────────────── */
   .collapsible {
@@ -415,6 +435,26 @@
   .btn-conf[data-value="Medium"].active { border-color: var(--conf-med);  background: #422006;    color: var(--conf-med); }
   .btn-conf[data-value="High"].active   { border-color: var(--conf-high); background: #14532d22;  color: var(--conf-high); }
 
+  /* ── Flag button ─────────────────────────────────────── */
+  #btn-flag {
+    padding: 7px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    outline: none;
+  }
+  #btn-flag:hover { border-color: var(--flag-color); color: var(--flag-color); }
+  #btn-flag.active {
+    border-color: var(--flag-color);
+    background: #431407;
+    color: var(--flag-color);
+    font-weight: 600;
+  }
+
   #note-input {
     flex: 1;
     min-width: 200px;
@@ -485,7 +525,7 @@
 <div class="overlay" id="setup-overlay">
   <div class="card">
     <h1>AuditK Annotation</h1>
-    <p>Enter your name to begin. It will be stored locally and attached to your annotations.</p>
+    <p>Enter your name to begin. Progress is saved to the server.</p>
     <input class="text-input" id="annotator-input" type="text" placeholder="Your name" autocomplete="off">
     <button class="btn-tax" id="btn-start" style="width:100%;justify-content:center;padding:12px;"
             onclick="startAnnotation()">Start →</button>
@@ -543,6 +583,11 @@
       <div class="panel-header">Action Taken</div>
       <div class="panel-body" id="action-body"></div>
     </div>
+  </div>
+
+  <!-- Copy step button -->
+  <div id="copy-row">
+    <button id="btn-copy" onclick="copyStep()">📋 Copy step <span style="font-size:10px;opacity:0.6;margin-left:4px">C</span></button>
   </div>
 
   <!-- Policy reference (hidden for coding domain) -->
@@ -636,6 +681,12 @@
     </div>
 
     <div class="control-row">
+      <div class="control-label">Flag</div>
+      <button id="btn-flag" onclick="flagStep()">🚩 Flag: data quality issue</button>
+      <span class="kbd-hint" style="margin-left:0;font-size:11px;color:var(--muted)">advances without label/confidence</span>
+    </div>
+
+    <div class="control-row">
       <div class="control-label">Note</div>
       <input id="note-input" type="text" placeholder="Optional comment (press Enter to advance)">
       <button id="btn-next" disabled onclick="advance()">Next →<span class="kbd" style="margin-left:8px">↵</span></button>
@@ -654,12 +705,12 @@ let cursor          = 0;
 let annotator       = '';
 let selectedLabel   = null;
 let selectedConf    = null;
-let currentSessRank = null;   // track which session is displayed
-let policyCache     = {};     // domain → text content
+let flagged         = false;
+let annotations     = [];   // server-synced in-memory copy
+let currentSessRank = null;
+let policyCache     = {};
 
-const TOTAL       = 361;
-const STORAGE_KEY = () => `auditk_annotations_${annotator}`;
-const CURSOR_KEY  = () => `auditk_cursor_${annotator}`;
+const TOTAL = 361;
 
 // ── Boot ───────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -682,12 +733,33 @@ function startAnnotation() {
   loadData();
 }
 
+// ── Migration from localStorage ────────────────────────────
+async function migrateLocalStorage() {
+  const dataKey   = `auditk_annotations_${annotator}`;
+  const cursorKey = `auditk_cursor_${annotator}`;
+  const stored = localStorage.getItem(dataKey);
+  if (!stored) return;
+  let data;
+  try { data = JSON.parse(stored); } catch { return; }
+  if (!Array.isArray(data) || !data.length) return;
+
+  document.getElementById('load-msg').textContent = 'Migrating saved progress…';
+  const migrated = data.map(a => ({ ...a, data_quality_flag: a.data_quality_flag || false }));
+  await fetch('/api/annotate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(migrated),
+  });
+  localStorage.removeItem(dataKey);
+  localStorage.removeItem(cursorKey);
+}
+
 // ── Load data ──────────────────────────────────────────────
 async function loadData() {
   const msg = document.getElementById('load-msg');
   try {
     msg.textContent = 'Fetching gold_set_sessions.jsonl…';
-    const resp = await fetch('../data/gold_set_sessions.jsonl');
+    const resp = await fetch('/data/gold_set_sessions.jsonl');
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const text = await resp.text();
     msg.textContent = 'Parsing…';
@@ -712,16 +784,21 @@ async function loadData() {
     }
     sessions = Object.values(byRank).sort((a, b) => a.rank - b.rank);
 
-    const saved = parseInt(localStorage.getItem(CURSOR_KEY()) || '0', 10);
-    cursor = Math.min(saved, steps.length);
+    await migrateLocalStorage();
+
+    msg.textContent = 'Loading saved progress…';
+    const progResp = await fetch(`/api/progress?annotator=${encodeURIComponent(annotator)}`);
+    if (!progResp.ok) throw new Error(`Progress fetch failed: HTTP ${progResp.status}`);
+    annotations = await progResp.json();
+    cursor = annotations.length;
 
     document.getElementById('loading-overlay').classList.add('hidden');
     cursor >= steps.length ? showDone() : render();
   } catch (err) {
     msg.innerHTML = `<span style="color:#ef4444">Error: ${err.message}</span><br>
-      <small style="color:#8892a4">Serve from the project root:<br>
+      <small style="color:#8892a4">Make sure the Flask server is running:<br>
       <code>bash annotation_tool/serve.sh</code><br>
-      then open <code>http://localhost:8765/annotation_tool/index.html</code></small>`;
+      then open <code>http://localhost:8765/</code></small>`;
   }
 }
 
@@ -738,7 +815,7 @@ async function loadPolicy(domain) {
   }
   body.textContent = 'Loading policy…';
   try {
-    const resp = await fetch(`policies/${domain}.md`);
+    const resp = await fetch(`/policies/${domain}.md`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const text = await resp.text();
     policyCache[domain] = text;
@@ -771,7 +848,6 @@ function render() {
       reqEl.classList.add('hidden');
     }
 
-    // load policy for this domain
     const policyPanel = document.getElementById('policy-panel');
     if (step.domain === 'coding') {
       policyPanel.classList.add('hidden');
@@ -805,17 +881,21 @@ function render() {
   document.getElementById('session-info').innerHTML =
     `Session ${sessNum}/${sessions.length} — <span>${step.domain}</span> — step ${stepNum}/${sessSteps}`;
 
-  const done = cursor;
-  const pct  = Math.round((done / TOTAL) * 100);
+  const done      = cursor;
+  const pct       = Math.round((done / TOTAL) * 100);
+  const flagCount = annotations.filter(a => a.data_quality_flag).length;
+  const flagStr   = flagCount > 0 ? ` · 🚩 ${flagCount}` : '';
   document.getElementById('progress-bar').style.width = pct + '%';
-  document.getElementById('progress-label').textContent = `${done} / ${TOTAL}`;
+  document.getElementById('progress-label').textContent = `${done} / ${TOTAL}${flagStr}`;
   document.getElementById('annotator-badge').textContent = annotator;
 
   // ── Reset controls ────────────────────────────────────────
   selectedLabel = null;
   selectedConf  = null;
+  flagged       = false;
   document.querySelectorAll('.btn-tax').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.btn-conf').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-flag').classList.remove('active');
   document.getElementById('note-input').value = '';
   updateNext();
   document.getElementById('note-input').focus();
@@ -849,32 +929,66 @@ function selectConf(btn) {
   updateNext();
 }
 
+function flagStep() {
+  flagged = !flagged;
+  document.getElementById('btn-flag').classList.toggle('active', flagged);
+  updateNext();
+}
+
 function updateNext() {
-  document.getElementById('btn-next').disabled = !(selectedLabel && selectedConf);
+  document.getElementById('btn-next').disabled = !(flagged || (selectedLabel && selectedConf));
+}
+
+// ── Copy step to clipboard ─────────────────────────────────
+async function copyStep() {
+  if (!steps[cursor]) return;
+  const step   = steps[cursor];
+  const intent = step.declared_intent || step.thought || '';
+  const action = step.action_taken   || step.code     || '';
+  const text   = `DECLARED INTENT:\n${intent}\n\nACTION TAKEN:\n${action}`;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    return;
+  }
+  const btn = document.getElementById('btn-copy');
+  btn.classList.add('copied');
+  btn.textContent = 'Copied!';
+  setTimeout(() => {
+    btn.classList.remove('copied');
+    btn.innerHTML = '📋 Copy step <span style="font-size:10px;opacity:0.6;margin-left:4px">C</span>';
+  }, 1500);
 }
 
 // ── Advance ────────────────────────────────────────────────
-function advance() {
-  if (!selectedLabel || !selectedConf) return;
+async function advance() {
+  if (!(flagged || (selectedLabel && selectedConf))) return;
   const step = steps[cursor];
 
-  const annotation = {
-    trace_id:    step.trace_id,
-    step_number: step.step_number,
-    domain:      step.domain,
+  const ann = {
     annotator,
-    label:       selectedLabel,
-    confidence:  selectedConf,
-    note:        document.getElementById('note-input').value.trim(),
-    timestamp:   new Date().toISOString(),
+    trace_id:          step.trace_id,
+    step_number:       step.step_number,
+    domain:            step.domain,
+    label:             flagged ? null : selectedLabel,
+    confidence:        flagged ? null : selectedConf,
+    note:              document.getElementById('note-input').value.trim(),
+    data_quality_flag: flagged,
+    timestamp:         new Date().toISOString(),
   };
 
-  const store = JSON.parse(localStorage.getItem(STORAGE_KEY()) || '[]');
-  store.push(annotation);
-  localStorage.setItem(STORAGE_KEY(), JSON.stringify(store));
+  try {
+    await fetch('/api/annotate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ann),
+    });
+  } catch (err) {
+    console.error('Save failed:', err);
+  }
 
+  annotations.push(ann);
   cursor++;
-  localStorage.setItem(CURSOR_KEY(), String(cursor));
   cursor >= steps.length ? showDone() : render();
 }
 
@@ -903,20 +1017,24 @@ document.addEventListener('keydown', e => {
   } else if (confMap[e.key]) {
     const btn = document.querySelector(`.btn-conf[data-value="${confMap[e.key]}"]`);
     if (btn) selectConf(btn);
+  } else if (e.key === 'c' || e.key === 'C') {
+    copyStep();
   }
 });
 
 // ── Done screen ────────────────────────────────────────────
 function showDone() {
-  const store = JSON.parse(localStorage.getItem(STORAGE_KEY()) || '[]');
   const labelCounts = {}, domainCounts = {};
-  for (const a of store) {
-    labelCounts[a.label]   = (labelCounts[a.label]  || 0) + 1;
-    domainCounts[a.domain] = (domainCounts[a.domain] || 0) + 1;
+  let flagCount = 0;
+  for (const a of annotations) {
+    if (a.data_quality_flag) { flagCount++; continue; }
+    if (a.label)  labelCounts[a.label]   = (labelCounts[a.label]  || 0) + 1;
+    if (a.domain) domainCounts[a.domain] = (domainCounts[a.domain] || 0) + 1;
   }
 
   const statsEl = document.getElementById('done-stats');
-  let html = `<div><span class="stat-label">Total annotations:</span> <strong>${store.length}</strong></div>`;
+  let html = `<div><span class="stat-label">Total annotations:</span> <strong>${annotations.length}</strong></div>`;
+  if (flagCount) html += `<div><span class="stat-label">🚩 Data quality flags:</span> <strong style="color:var(--flag-color)">${flagCount}</strong></div>`;
   html += `<hr style="border-color:var(--border);margin:8px 0">`;
   for (const [lbl, cnt] of Object.entries(labelCounts).sort((a, b) => b[1] - a[1]))
     html += `<div><span class="stat-label">${lbl}:</span> ${cnt}</div>`;
@@ -929,14 +1047,7 @@ function showDone() {
 }
 
 function downloadResults() {
-  const store = JSON.parse(localStorage.getItem(STORAGE_KEY()) || '[]');
-  const blob  = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
-  const url   = URL.createObjectURL(blob);
-  const a     = document.createElement('a');
-  a.href      = url;
-  a.download  = `auditk_annotations_${annotator.replace(/\s+/g, '_')}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  window.location.href = `/api/export?annotator=${encodeURIComponent(annotator)}`;
 }
 </script>
 </body>
