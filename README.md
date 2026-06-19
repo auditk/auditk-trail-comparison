@@ -163,6 +163,22 @@ If you use this experiment in your research, please cite the auditk software:
 - [`auditk-spec`](https://github.com/auditk/auditk-spec) — Protocol specification
 - [TRAIL dataset](https://huggingface.co/datasets/PatronusAI/TRAIL) — Deshpande et al., 2025
 
+## Annotation tool
+
+A browser-based annotation tool for the gold set is in `annotation_tool/index.html`.
+
+**Important:** the server must be started from the **project root**, not the `annotation_tool/` subdirectory. The tool fetches data files using paths relative to the project root.
+
+```bash
+# Start the server from the project root:
+bash annotation_tool/serve.sh
+
+# Then open:
+# http://localhost:8765/annotation_tool/index.html
+```
+
+---
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
