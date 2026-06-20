@@ -514,6 +514,52 @@
   #btn-next:hover:not(:disabled) { background: var(--accent-hover); }
   #btn-next:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
 
+  #btn-back {
+    align-self: flex-end;
+    padding: 10px 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    outline: none;
+  }
+  #btn-back:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+  #btn-back:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Inline copy icon buttons (user request, policy) ──── */
+  .copy-icon-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 10px;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .copy-icon-btn:hover { opacity: 1; }
+
+  /* Policy header: trigger + copy btn side by side */
+  .collapsible-header {
+    display: flex;
+    align-items: stretch;
+    background: var(--surface2);
+  }
+  .collapsible-header .collapsible-trigger {
+    flex: 1;
+    width: auto;
+  }
+  .collapsible-header .copy-icon-btn {
+    border-left: 1px solid var(--border);
+    padding: 0 12px;
+  }
+
   .kbd-hint { font-size: 11px; color: var(--muted); margin-left: auto; }
 
   /* ── Done screen ─────────────────────────────────────── */
@@ -597,6 +643,7 @@
     <div id="user-request-label">User request:</div>
     <div id="user-request-text"></div>
     <div id="user-request-expand" onclick="toggleRequestExpand()">expand ↕</div>
+    <button class="copy-icon-btn" id="btn-copy-request" onclick="copyUserRequest()" title="Copy user request">📋</button>
   </div>
 
   <!-- Session start note: only shown on first step of a session -->
@@ -629,9 +676,12 @@
 
   <!-- Policy reference (hidden for coding domain) -->
   <div class="collapsible hidden" id="policy-panel">
-    <button class="collapsible-trigger" onclick="toggleCollapsible('policy-panel')">
-      <span class="collapsible-arrow">▶</span> Policy reference
-    </button>
+    <div class="collapsible-header">
+      <button class="collapsible-trigger" onclick="toggleCollapsible('policy-panel')">
+        <span class="collapsible-arrow">▶</span> Policy reference
+      </button>
+      <button class="copy-icon-btn" id="btn-copy-policy" onclick="copyPolicy()" title="Copy policy">📋</button>
+    </div>
     <div class="collapsible-body">
       <div id="policy-body">Loading…</div>
     </div>
@@ -726,6 +776,7 @@
     <div class="control-row">
       <div class="control-label">Note</div>
       <input id="note-input" type="text" placeholder="Optional comment (press Enter to advance)">
+      <button id="btn-back" onclick="goBack()">← Back<span class="kbd" style="margin-left:8px">←</span></button>
       <button id="btn-next" disabled onclick="advance()">Next →<span class="kbd" style="margin-left:8px">↵</span></button>
     </div>
   </div>
@@ -947,7 +998,7 @@ function render() {
   document.getElementById('session-info').innerHTML =
     `Session ${sessNum}/${sessions.length} — <span>${step.domain}</span> — step ${stepNum}/${sessSteps}`;
 
-  const done      = cursor;
+  const done      = annotations.length;
   const pct       = Math.round((done / TOTAL) * 100);
   const flagCount = annotations.filter(a => a.data_quality_flag).length;
   const flagStr   = flagCount > 0 ? ` · 🚩 ${flagCount}` : '';
@@ -962,9 +1013,29 @@ function render() {
   document.querySelectorAll('.btn-tax').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.btn-conf').forEach(b => b.classList.remove('active'));
   document.getElementById('btn-flag').classList.remove('active');
+  document.getElementById('btn-back').disabled = cursor === 0;
   document.getElementById('note-input').value = '';
   updateNext();
   document.getElementById('note-input').focus();
+}
+
+// ── Restore a saved annotation into the controls ───────────
+function restoreAnnotation(ann) {
+  if (!ann) return;
+  if (ann.data_quality_flag) {
+    flagged = true;
+    document.getElementById('btn-flag').classList.add('active');
+  }
+  if (ann.label) {
+    const btn = document.querySelector(`.btn-tax[data-value="${ann.label}"]`);
+    if (btn) { btn.classList.add('active'); selectedLabel = ann.label; }
+  }
+  if (ann.confidence) {
+    const btn = document.querySelector(`.btn-conf[data-value="${ann.confidence}"]`);
+    if (btn) { btn.classList.add('active'); selectedConf = ann.confidence; }
+  }
+  document.getElementById('note-input').value = ann.note || '';
+  updateNext();
 }
 
 // ── Collapsible panels ─────────────────────────────────────
@@ -1053,9 +1124,22 @@ async function advance() {
     console.error('Save failed:', err);
   }
 
-  annotations.push(ann);
+  // Update in-memory: replace when revisiting a past step, otherwise append.
+  if (cursor < annotations.length) {
+    annotations[cursor] = ann;
+  } else {
+    annotations.push(ann);
+  }
   cursor++;
   cursor >= steps.length ? showDone() : render();
+}
+
+// ── Go back ────────────────────────────────────────────────
+function goBack() {
+  if (cursor === 0) return;
+  cursor--;
+  render();
+  restoreAnnotation(annotations[cursor]);
 }
 
 // ── Keyboard shortcuts ─────────────────────────────────────
@@ -1085,6 +1169,9 @@ document.addEventListener('keydown', e => {
     if (btn) selectConf(btn);
   } else if (e.key === 'c' || e.key === 'C') {
     copyStep();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    goBack();
   }
 });
 
@@ -1114,6 +1201,26 @@ function showDone() {
 
 function downloadResults() {
   window.location.href = `/api/export?annotator=${encodeURIComponent(annotator)}`;
+}
+
+// ── Copy user request to clipboard ─────────────────────────
+async function copyUserRequest() {
+  const text = document.getElementById('user-request-text').textContent;
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); } catch { return; }
+  const btn = document.getElementById('btn-copy-request');
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = '📋'; }, 1500);
+}
+
+// ── Copy policy to clipboard ────────────────────────────────
+async function copyPolicy() {
+  const text = document.getElementById('policy-body').textContent;
+  if (!text || text === 'Loading…') return;
+  try { await navigator.clipboard.writeText(text); } catch { return; }
+  const btn = document.getElementById('btn-copy-policy');
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = '📋'; }, 1500);
 }
 </script>
 </body>
