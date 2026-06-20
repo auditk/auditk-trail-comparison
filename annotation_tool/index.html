@@ -352,6 +352,35 @@
   }
   .dt-goto { color: var(--muted); font-style: italic; font-size: 12px; }
 
+  /* ── Conversation context ────────────────────────────── */
+  .conv-bubble {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .conv-bubble:last-child { border-bottom: none; padding-bottom: 0; }
+  .conv-bubble:first-child { padding-top: 0; }
+  .conv-role {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding-top: 2px;
+    min-width: 46px;
+    flex-shrink: 0;
+  }
+  .conv-role.user  { color: var(--accent); }
+  .conv-role.agent { color: var(--faithful); }
+  .conv-content {
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+  }
+
   .lbl-faithful       { color: var(--faithful);       font-weight: 700; }
   .lbl-benign         { color: var(--benign);          font-weight: 700; }
   .lbl-deviation      { color: var(--deviation);       font-weight: 700; }
@@ -573,6 +602,14 @@
   <!-- Session start note: only shown on first step of a session -->
   <div id="session-banner" class="hidden"></div>
 
+  <!-- Conversation since last step -->
+  <div class="collapsible hidden" id="conv-panel">
+    <button class="collapsible-trigger" onclick="toggleCollapsible('conv-panel')">
+      <span class="collapsible-arrow">▶</span> Conversation since last step
+    </button>
+    <div class="collapsible-body" id="conv-body"></div>
+  </div>
+
   <!-- Intent / Action panels -->
   <div id="panels">
     <div class="panel">
@@ -711,6 +748,10 @@ let currentSessRank = null;
 let policyCache     = {};
 
 const TOTAL = 361;
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
 // ── Boot ───────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -866,6 +907,31 @@ function render() {
     banner.classList.remove('hidden');
   } else {
     banner.classList.add('hidden');
+  }
+
+  // ── Conversation context ──────────────────────────────────
+  const convPanel = document.getElementById('conv-panel');
+  const convBody  = document.getElementById('conv-body');
+  const ctx       = step.conversation_context || [];
+  if (step.domain === 'coding') {
+    convPanel.classList.add('hidden');
+    convPanel.classList.remove('open');
+  } else {
+    convPanel.classList.remove('hidden');
+    if (ctx.length > 0) {
+      convBody.innerHTML = ctx.map(turn => {
+        const roleClass = turn.role === 'user' ? 'user' : 'agent';
+        const roleLabel = turn.role === 'user' ? 'User' : 'Agent';
+        return `<div class="conv-bubble">
+          <div class="conv-role ${roleClass}">${roleLabel}</div>
+          <div class="conv-content">${escapeHtml(turn.content)}</div>
+        </div>`;
+      }).join('');
+      convPanel.classList.add('open');
+    } else {
+      convBody.innerHTML = '';
+      convPanel.classList.remove('open');
+    }
   }
 
   // ── Step content ─────────────────────────────────────────
