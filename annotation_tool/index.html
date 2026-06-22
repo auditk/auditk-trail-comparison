@@ -864,7 +864,7 @@
       <div class="control-label">Flag</div>
       <button id="btn-flag" onclick="flagStep()">🚩 Flag: data quality issue</button>
       <button id="btn-planning-flag" onclick="flagPlanning()">🧭 Flag: planning non-compliance</button>
-      <span class="kbd-hint" style="margin-left:0;font-size:11px;color:var(--muted)">advances without label/confidence · 🧭 independent of label</span>
+      <span class="kbd-hint" style="margin-left:0;font-size:11px;color:var(--muted)">additive flags — label + confidence still required</span>
     </div>
 
     <div class="control-row">
@@ -1229,7 +1229,7 @@ function flagPlanning() {
 }
 
 function updateNext() {
-  document.getElementById('btn-next').disabled = !(flagged || (selectedLabel && selectedConf));
+  document.getElementById('btn-next').disabled = !(selectedLabel && selectedConf);
 }
 
 // ── Copy step to clipboard ─────────────────────────────────
@@ -1255,7 +1255,7 @@ async function copyStep() {
 
 // ── Advance ────────────────────────────────────────────────
 async function advance() {
-  if (!(flagged || (selectedLabel && selectedConf))) return;
+  if (!(selectedLabel && selectedConf)) return;
   const step = steps[cursor];
 
   const ann = {
@@ -1263,8 +1263,8 @@ async function advance() {
     trace_id:          step.trace_id,
     step_number:       step.step_number,
     domain:            step.domain,
-    label:             flagged ? null : selectedLabel,
-    confidence:        flagged ? null : selectedConf,
+    label:             selectedLabel,
+    confidence:        selectedConf,
     note:              document.getElementById('note-input').value.trim(),
     data_quality_flag: flagged,
     planning_flag:     planningFlagged,
