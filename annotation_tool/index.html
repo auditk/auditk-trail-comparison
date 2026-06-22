@@ -524,7 +524,7 @@
   .btn-conf[data-value="High"].active   { border-color: var(--conf-high); background: #14532d22;  color: var(--conf-high); }
 
   /* ── Flag button ─────────────────────────────────────── */
-  #btn-flag {
+  #btn-flag, #btn-planning-flag {
     padding: 7px 14px;
     border: 2px solid var(--border);
     border-radius: var(--radius);
@@ -540,6 +540,13 @@
     border-color: var(--flag-color);
     background: #431407;
     color: var(--flag-color);
+    font-weight: 600;
+  }
+  #btn-planning-flag:hover { border-color: var(--accent); color: var(--accent); }
+  #btn-planning-flag.active {
+    border-color: var(--accent);
+    background: #1e1b4b;
+    color: var(--accent-hover);
     font-weight: 600;
   }
 
@@ -856,7 +863,8 @@
     <div class="control-row">
       <div class="control-label">Flag</div>
       <button id="btn-flag" onclick="flagStep()">🚩 Flag: data quality issue</button>
-      <span class="kbd-hint" style="margin-left:0;font-size:11px;color:var(--muted)">advances without label/confidence</span>
+      <button id="btn-planning-flag" onclick="flagPlanning()">🧭 Flag: planning non-compliance</button>
+      <span class="kbd-hint" style="margin-left:0;font-size:11px;color:var(--muted)">advances without label/confidence · 🧭 independent of label</span>
     </div>
 
     <div class="control-row">
@@ -880,6 +888,7 @@ let annotator       = '';
 let selectedLabel   = null;
 let selectedConf    = null;
 let flagged         = false;
+let planningFlagged = false;
 let annotations     = [];   // server-synced in-memory copy
 let currentSessRank = null;
 let policyCache     = {};
@@ -1143,12 +1152,14 @@ function render() {
   document.getElementById('annotator-badge').textContent = annotator;
 
   // ── Reset controls ────────────────────────────────────────
-  selectedLabel = null;
-  selectedConf  = null;
-  flagged       = false;
+  selectedLabel   = null;
+  selectedConf    = null;
+  flagged         = false;
+  planningFlagged = false;
   document.querySelectorAll('.btn-tax').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.btn-conf').forEach(b => b.classList.remove('active'));
   document.getElementById('btn-flag').classList.remove('active');
+  document.getElementById('btn-planning-flag').classList.remove('active');
   document.getElementById('btn-back').disabled = cursor === 0;
   document.getElementById('note-input').value = '';
   updateNext();
@@ -1161,6 +1172,10 @@ function restoreAnnotation(ann) {
   if (ann.data_quality_flag) {
     flagged = true;
     document.getElementById('btn-flag').classList.add('active');
+  }
+  if (ann.planning_flag) {
+    planningFlagged = true;
+    document.getElementById('btn-planning-flag').classList.add('active');
   }
   if (ann.label) {
     const btn = document.querySelector(`.btn-tax[data-value="${ann.label}"]`);
@@ -1208,6 +1223,11 @@ function flagStep() {
   updateNext();
 }
 
+function flagPlanning() {
+  planningFlagged = !planningFlagged;
+  document.getElementById('btn-planning-flag').classList.toggle('active', planningFlagged);
+}
+
 function updateNext() {
   document.getElementById('btn-next').disabled = !(flagged || (selectedLabel && selectedConf));
 }
@@ -1247,6 +1267,7 @@ async function advance() {
     confidence:        flagged ? null : selectedConf,
     note:              document.getElementById('note-input').value.trim(),
     data_quality_flag: flagged,
+    planning_flag:     planningFlagged,
     timestamp:         new Date().toISOString(),
   };
 
@@ -1461,8 +1482,9 @@ function buildAnnBadge(ann) {
     'Medium': 'var(--conf-med)',
     'High':   'var(--conf-high)',
   }[ann.confidence] || 'var(--muted)';
-  const conf = ann.confidence ? `<span style="color:${confColor};font-weight:400"> ${ann.confidence}</span>` : '';
-  return `<span style="color:${labelColor}">${shortLabel}</span>${conf}`;
+  const conf     = ann.confidence ? `<span style="color:${confColor};font-weight:400"> ${ann.confidence}</span>` : '';
+  const planning = ann.planning_flag ? ' <span title="planning non-compliance">🧭</span>' : '';
+  return `<span style="color:${labelColor}">${shortLabel}</span>${conf}${planning}`;
 }
 </script>
 </body>

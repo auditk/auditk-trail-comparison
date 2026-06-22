@@ -29,6 +29,7 @@ def init_db():
                 confidence TEXT,
                 note TEXT,
                 data_quality_flag INTEGER DEFAULT 0,
+                planning_flag INTEGER DEFAULT 0,
                 timestamp TEXT,
                 UNIQUE(annotator, trace_id, step_number)
             )
@@ -63,16 +64,18 @@ def annotate():
         for ann in items:
             conn.execute('''
                 INSERT INTO annotations
-                    (annotator, trace_id, step_number, domain, label, confidence, note, data_quality_flag, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (annotator, trace_id, step_number, domain, label, confidence, note, data_quality_flag, planning_flag, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(annotator, trace_id, step_number) DO UPDATE SET
                     domain=excluded.domain, label=excluded.label,
                     confidence=excluded.confidence, note=excluded.note,
-                    data_quality_flag=excluded.data_quality_flag, timestamp=excluded.timestamp
+                    data_quality_flag=excluded.data_quality_flag,
+                    planning_flag=excluded.planning_flag, timestamp=excluded.timestamp
             ''', (
                 ann.get('annotator'), ann.get('trace_id'), ann.get('step_number'),
                 ann.get('domain'), ann.get('label'), ann.get('confidence'),
                 ann.get('note', ''), 1 if ann.get('data_quality_flag') else 0,
+                1 if ann.get('planning_flag') else 0,
                 ann.get('timestamp'),
             ))
     return jsonify({'ok': True, 'count': len(items)})
@@ -89,6 +92,7 @@ def progress():
     for r in rows:
         d = dict(r)
         d['data_quality_flag'] = bool(d['data_quality_flag'])
+        d['planning_flag'] = bool(d.get('planning_flag', 0))
         result.append(d)
     return jsonify(result)
 
@@ -105,6 +109,7 @@ def export():
     for r in rows:
         d = dict(r)
         d['data_quality_flag'] = bool(d['data_quality_flag'])
+        d['planning_flag'] = bool(d.get('planning_flag', 0))
         result.append(d)
     from flask import Response
     import json
