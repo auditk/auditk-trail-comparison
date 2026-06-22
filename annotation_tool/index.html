@@ -387,6 +387,65 @@
   .lbl-noncompliance  { color: var(--noncompliance);   font-weight: 700; }
   .lbl-undeclared     { color: var(--undeclared);      font-weight: 700; }
 
+  /* ── Full context reconstructed panel ───────────────── */
+  #fullconv-body {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* ── Trace view ──────────────────────────────────────── */
+  .trace-list {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .trace-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+    user-select: none;
+  }
+  .trace-row:last-child { border-bottom: none; }
+  .trace-row.current {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    padding-left: 5px;
+  }
+  .trace-step-num {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 22px;
+    flex-shrink: 0;
+  }
+  .trace-intent {
+    flex: 2;
+    color: var(--text);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .trace-action {
+    flex: 1.5;
+    color: var(--muted);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .trace-ann {
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    min-width: 90px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
   .dt-divider {
     border: none;
     border-top: 1px solid var(--border);
@@ -651,10 +710,37 @@
 
   <!-- Conversation since last step -->
   <div class="collapsible hidden" id="conv-panel">
-    <button class="collapsible-trigger" onclick="toggleCollapsible('conv-panel')">
-      <span class="collapsible-arrow">▶</span> Conversation since last step
-    </button>
+    <div class="collapsible-header">
+      <button class="collapsible-trigger" onclick="toggleCollapsible('conv-panel')">
+        <span class="collapsible-arrow">▶</span> Conversation since last step
+      </button>
+      <button class="copy-icon-btn" id="btn-copy-conv" onclick="copyConvContext()" title="Copy conversation">📋</button>
+    </div>
     <div class="collapsible-body" id="conv-body"></div>
+  </div>
+
+  <!-- Full conversation context (reconstructed) -->
+  <div class="collapsible hidden" id="fullconv-panel">
+    <div class="collapsible-header">
+      <button class="collapsible-trigger" onclick="toggleCollapsible('fullconv-panel')">
+        <span class="collapsible-arrow">▶</span> Full conversation context (reconstructed)
+      </button>
+      <button class="copy-icon-btn" id="btn-copy-fullconv" onclick="copyFullConvContext()" title="Copy full context">📋</button>
+    </div>
+    <div class="collapsible-body" id="fullconv-body"></div>
+  </div>
+
+  <!-- Trace view -->
+  <div class="collapsible hidden" id="trace-panel">
+    <div class="collapsible-header">
+      <button class="collapsible-trigger" onclick="toggleCollapsible('trace-panel')">
+        <span class="collapsible-arrow">▶</span> Trace view
+      </button>
+      <button class="copy-icon-btn" id="btn-copy-trace" onclick="copyTrace()" title="Copy trace">📋</button>
+    </div>
+    <div class="collapsible-body" style="padding: 8px 0;">
+      <div class="trace-list" id="trace-list"></div>
+    </div>
   </div>
 
   <!-- Intent / Action panels -->
@@ -985,6 +1071,56 @@ function render() {
     }
   }
 
+  // ── Full conversation context (reconstructed) ────────────
+  const fullconvPanel = document.getElementById('fullconv-panel');
+  const fullconvBody  = document.getElementById('fullconv-body');
+  if (step.domain === 'coding' || !sess) {
+    fullconvPanel.classList.add('hidden');
+    fullconvPanel.classList.remove('open');
+  } else {
+    fullconvPanel.classList.remove('hidden');
+    fullconvPanel.classList.remove('open');   // always collapsed on navigation
+    const fullCtx = buildFullContext(sess, stepInSession, step.user_opening_message || '');
+    if (fullCtx.length > 0) {
+      fullconvBody.innerHTML = fullCtx.map(turn => {
+        const roleClass = turn.role === 'user' ? 'user' : 'agent';
+        const roleLabel = turn.role === 'user' ? 'User' : 'Agent';
+        return `<div class="conv-bubble">
+          <div class="conv-role ${roleClass}">${roleLabel}</div>
+          <div class="conv-content">${escapeHtml(turn.content)}</div>
+        </div>`;
+      }).join('');
+    } else {
+      fullconvBody.innerHTML = '<span style="color:var(--muted);font-size:12px">No context available</span>';
+    }
+  }
+
+  // ── Trace view ────────────────────────────────────────────
+  const tracePanel = document.getElementById('trace-panel');
+  const traceList  = document.getElementById('trace-list');
+  if (!sess) {
+    tracePanel.classList.add('hidden');
+  } else {
+    tracePanel.classList.remove('hidden');
+    if (isFirstInSession) {
+      tracePanel.classList.remove('open');
+    }
+    traceList.innerHTML = sess.steps.map((s, i) => {
+      const isCurrent = i === stepInSession;
+      const ann = annotations.find(
+        a => a.trace_id === s.trace_id && a.step_number === s.step_number
+      );
+      const intent80 = (s.declared_intent || s.thought || '').slice(0, 80);
+      const action60 = (s.action_taken   || s.code     || '').slice(0, 60);
+      return `<div class="trace-row${isCurrent ? ' current' : ''}">
+        <span class="trace-step-num">${i + 1}</span>
+        <span class="trace-intent">${escapeHtml(intent80)}</span>
+        <span class="trace-action">${escapeHtml(action60)}</span>
+        <span class="trace-ann">${buildAnnBadge(ann)}</span>
+      </div>`;
+    }).join('');
+  }
+
   // ── Step content ─────────────────────────────────────────
   const intent = step.declared_intent || step.thought || '';
   const action = step.action_taken   || step.code     || '';
@@ -1221,6 +1357,112 @@ async function copyPolicy() {
   const btn = document.getElementById('btn-copy-policy');
   btn.textContent = '✓';
   setTimeout(() => { btn.textContent = '📋'; }, 1500);
+}
+
+// ── Copy helpers for conv panels ────────────────────────────
+function turnsToText(turns) {
+  return turns.map(t => `${t.role === 'user' ? 'User' : 'Agent'}: ${t.content}`).join('\n\n');
+}
+
+async function flashCopyBtn(id) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = '📋'; }, 1500);
+}
+
+async function copyConvContext() {
+  const ctx = (steps[cursor] && steps[cursor].conversation_context) || [];
+  if (!ctx.length) return;
+  try { await navigator.clipboard.writeText(turnsToText(ctx)); } catch { return; }
+  flashCopyBtn('btn-copy-conv');
+}
+
+async function copyFullConvContext() {
+  const step = steps[cursor];
+  if (!step) return;
+  const sess = sessions.find(s => s.rank === step.session_rank);
+  if (!sess) return;
+  const stepInSession = sess.steps.findIndex(s => s === step);
+  const ctx = buildFullContext(sess, stepInSession, step.user_opening_message || '');
+  if (!ctx.length) return;
+  try { await navigator.clipboard.writeText(turnsToText(ctx)); } catch { return; }
+  flashCopyBtn('btn-copy-fullconv');
+}
+
+async function copyTrace() {
+  const step = steps[cursor];
+  if (!step) return;
+  const sess = sessions.find(s => s.rank === step.session_rank);
+  if (!sess) return;
+  const lines = sess.steps.map((s, i) => {
+    const ann = annotations.find(a => a.trace_id === s.trace_id && a.step_number === s.step_number);
+    const intent = (s.declared_intent || s.thought || '').slice(0, 80);
+    const action = (s.action_taken   || s.code     || '').slice(0, 60);
+    const annStr = ann
+      ? (ann.data_quality_flag ? 'flagged' : [ann.label, ann.confidence].filter(Boolean).join(' '))
+      : '—';
+    return `[${i + 1}] ${intent} | ${action} | ${annStr}`;
+  });
+  try { await navigator.clipboard.writeText(lines.join('\n')); } catch { return; }
+  flashCopyBtn('btn-copy-trace');
+}
+
+// ── Build reconstructed full context for a session step ─────
+function buildFullContext(sess, stepInSession, openingMessage) {
+  const seen   = new Set();
+  const result = [];
+
+  for (let i = 0; i <= stepInSession; i++) {
+    const ctx = (sess.steps[i] && sess.steps[i].conversation_context) || [];
+    for (const turn of ctx) {
+      const key = turn.role + '|||' + turn.content;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(turn);
+      }
+    }
+  }
+
+  // Prepend user_opening_message if it isn't already the first user message
+  if (openingMessage) {
+    const key = 'user|||' + openingMessage;
+    if (!seen.has(key)) {
+      result.unshift({ role: 'user', content: openingMessage });
+    }
+  }
+
+  return result;
+}
+
+// ── Render annotation badge for trace view ───────────────────
+function buildAnnBadge(ann) {
+  if (!ann) return '<span style="color:var(--muted)">—</span>';
+  if (ann.data_quality_flag) {
+    return '<span style="color:var(--flag-color)">🚩 flagged</span>';
+  }
+  if (!ann.label) return '<span style="color:var(--muted)">—</span>';
+  const labelColor = {
+    'faithful':                 'var(--faithful)',
+    'benign_elaboration':       'var(--benign)',
+    'goal_deviation':           'var(--deviation)',
+    'instruction_noncompliance':'var(--noncompliance)',
+    'undeclared_goal':          'var(--undeclared)',
+  }[ann.label] || 'var(--muted)';
+  const shortLabel = {
+    'faithful':                 'faithful',
+    'benign_elaboration':       'benign',
+    'goal_deviation':           'deviation',
+    'instruction_noncompliance':'noncomp.',
+    'undeclared_goal':          'undecl.',
+  }[ann.label] || ann.label;
+  const confColor = {
+    'Low':    'var(--conf-low)',
+    'Medium': 'var(--conf-med)',
+    'High':   'var(--conf-high)',
+  }[ann.confidence] || 'var(--muted)';
+  const conf = ann.confidence ? `<span style="color:${confColor};font-weight:400"> ${ann.confidence}</span>` : '';
+  return `<span style="color:${labelColor}">${shortLabel}</span>${conf}`;
 }
 </script>
 </body>
