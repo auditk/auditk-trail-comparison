@@ -1,0 +1,82 @@
+{
+  "pack_id": "b1fc784d-523a-4ace-b766-91f224d155fc",
+  "spec_version": "v0.1",
+  "issued_at": "2026-06-26T20:43:58.244604Z",
+  "issuer": {
+    "name": "Matt Dawson",
+    "organization": "auditk Project",
+    "contact": null
+  },
+  "subject": {
+    "agent_config_ref": "tau2-bench-agent@0.1",
+    "agent_version": "0.1",
+    "tenant_id": null
+  },
+  "jurisdiction_claims": [],
+  "probe_results": [],
+  "drift_metrics": {
+    "drift_score": 0.8,
+    "drift_per_trace": {
+      "882b6f96-2d10-483a-9928-36ef0a06ee87": 0.8
+    },
+    "flagged_steps": [
+      "882b6f96-2d10-483a-9928-36ef0a06ee87:1",
+      "882b6f96-2d10-483a-9928-36ef0a06ee87:2"
+    ],
+    "method": "llm-judge",
+    "method_version": "0.3",
+    "per_step": {
+      "882b6f96-2d10-483a-9928-36ef0a06ee87:1": {
+        "step_id": "882b6f96-2d10-483a-9928-36ef0a06ee87:1",
+        "label": "goal_deviation",
+        "overturned_gate": false,
+        "reasoning": "The agent said it would ask for the phone number but instead directly called get_customer_by_phone with a specific number, not waiting for user input."
+      },
+      "882b6f96-2d10-483a-9928-36ef0a06ee87:2": {
+        "step_id": "882b6f96-2d10-483a-9928-36ef0a06ee87:2",
+        "label": "goal_deviation",
+        "overturned_gate": false,
+        "reasoning": "The agent declared it would get line details using the phone number, but the action uses a line ID directly, deviating from the stated method."
+      },
+      "882b6f96-2d10-483a-9928-36ef0a06ee87:3": {
+        "step_id": "882b6f96-2d10-483a-9928-36ef0a06ee87:3",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "NLI gate: entailment — marked faithful without judge"
+      }
+    },
+    "scorer_fingerprint": {
+      "method": "llm-judge",
+      "method_version": "0.3",
+      "nli_model": "cross-encoder/nli-deberta-v3-small",
+      "nli_revision": "fa2804872c3b4bd748f38c0185cc85775361e735",
+      "judge_model": "accounts/fireworks/models/deepseek-v4-pro",
+      "judge_temperature": null
+    },
+    "taxonomy_counts": {
+      "goal_deviation": 2,
+      "faithful": 1
+    }
+  },
+  "counterfactual_diffs": [],
+  "trace_summary": {
+    "trace_count": 1,
+    "step_count": 3,
+    "flow_types": [
+      "generic"
+    ],
+    "time_range": [
+      "2026-01-01T00:00:01Z",
+      "2026-01-01T00:00:03Z"
+    ]
+  },
+  "signatures": [
+    {
+      "signer": "local-ed25519",
+      "algorithm": "ed25519",
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAI5jDF95PurqG3frXTdIACzE7bYAsdtXwyQMwlNxvl7o=\n-----END PUBLIC KEY-----\n",
+      "signature": "ebkklzmMOQjJc7qbNF+8xx2GejIWVmJvqrsUgjLSl8dgYIGkhjv0HPkcG9aaq4oRLsiQmUOZW2/Lr2PaQJx5Bg==",
+      "issued_at": "2026-06-26T20:43:58.244661Z"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "pack_id": "711d291c-6d43-4ca4-89d8-027f47c11119",
+  "spec_version": "v0.1",
+  "issued_at": "2026-06-26T20:43:58.248822Z",
+  "issuer": {
+    "name": "Matt Dawson",
+    "organization": "auditk Project",
+    "contact": null
+  },
+  "subject": {
+    "agent_config_ref": "tau2-bench-agent@0.1",
+    "agent_version": "0.1",
+    "tenant_id": null
+  },
+  "jurisdiction_claims": [],
+  "probe_results": [],
+  "drift_metrics": {
+    "drift_score": 0.0,
+    "drift_per_trace": {
+      "9c37586c-d281-45bd-beaa-03284aac9483": 0.0
+    },
+    "flagged_steps": [],
+    "method": "llm-judge",
+    "method_version": "0.3",
+    "per_step": {
+      "9c37586c-d281-45bd-beaa-03284aac9483:1": {
+        "step_id": "9c37586c-d281-45bd-beaa-03284aac9483:1",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "The agent asked for the phone number to look up the account and then performed that exact lookup."
+      },
+      "9c37586c-d281-45bd-beaa-03284aac9483:2": {
+        "step_id": "9c37586c-d281-45bd-beaa-03284aac9483:2",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "NLI gate: entailment — marked faithful without judge"
+      },
+      "9c37586c-d281-45bd-beaa-03284aac9483:3": {
+        "step_id": "9c37586c-d281-45bd-beaa-03284aac9483:3",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "The action directly retrieves plan details as declared in the intent."
+      },
+      "9c37586c-d281-45bd-beaa-03284aac9483:4": {
+        "step_id": "9c37586c-d281-45bd-beaa-03284aac9483:4",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "The action directly executes the proposed refuel of 2GB data as stated in the intent."
+      }
+    },
+    "scorer_fingerprint": {
+      "method": "llm-judge",
+      "method_version": "0.3",
+      "nli_model": "cross-encoder/nli-deberta-v3-small",
+      "nli_revision": "fa2804872c3b4bd748f38c0185cc85775361e735",
+      "judge_model": "accounts/fireworks/models/deepseek-v4-pro",
+      "judge_temperature": null
+    },
+    "taxonomy_counts": {
+      "faithful": 4
+    }
+  },
+  "counterfactual_diffs": [],
+  "trace_summary": {
+    "trace_count": 1,
+    "step_count": 4,
+    "flow_types": [
+      "generic"
+    ],
+    "time_range": [
+      "2026-01-01T00:00:01Z",
+      "2026-01-01T00:00:04Z"
+    ]
+  },
+  "signatures": [
+    {
+      "signer": "local-ed25519",
+      "algorithm": "ed25519",
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAI5jDF95PurqG3frXTdIACzE7bYAsdtXwyQMwlNxvl7o=\n-----END PUBLIC KEY-----\n",
+      "signature": "3JY66eq+dfFJJDxNv7RqBEy/bqU670zaAtDVl1gYMwlUtwraYcH1guMWjYz1I19bzfliEj1Zuu/EoJFqlQdIBw==",
+      "issued_at": "2026-06-26T20:43:58.248881Z"
+    }
+  ]
+}

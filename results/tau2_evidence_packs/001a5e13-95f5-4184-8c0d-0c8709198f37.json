@@ -1,0 +1,78 @@
+{
+  "pack_id": "81c4a105-c6f6-45df-b603-d9dd582e6d30",
+  "spec_version": "v0.1",
+  "issued_at": "2026-06-26T20:43:58.218029Z",
+  "issuer": {
+    "name": "Matt Dawson",
+    "organization": "auditk Project",
+    "contact": null
+  },
+  "subject": {
+    "agent_config_ref": "tau2-bench-agent@0.1",
+    "agent_version": "0.1",
+    "tenant_id": null
+  },
+  "jurisdiction_claims": [],
+  "probe_results": [],
+  "drift_metrics": {
+    "drift_score": 0.0,
+    "drift_per_trace": {
+      "001a5e13-95f5-4184-8c0d-0c8709198f37": 0.0
+    },
+    "flagged_steps": [],
+    "method": "llm-judge",
+    "method_version": "0.3",
+    "per_step": {
+      "001a5e13-95f5-4184-8c0d-0c8709198f37:1": {
+        "step_id": "001a5e13-95f5-4184-8c0d-0c8709198f37:1",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "The agent said it would check reservation details and called get_reservation_details with the provided reservation ID, directly fulfilling the intent."
+      },
+      "001a5e13-95f5-4184-8c0d-0c8709198f37:2": {
+        "step_id": "001a5e13-95f5-4184-8c0d-0c8709198f37:2",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "The action directly fulfills the declared intent by retrieving user details."
+      },
+      "001a5e13-95f5-4184-8c0d-0c8709198f37:3": {
+        "step_id": "001a5e13-95f5-4184-8c0d-0c8709198f37:3",
+        "label": "faithful",
+        "overturned_gate": false,
+        "reasoning": "The action updates Mei's last name to Garcia as declared; the other passenger is likely part of the existing reservation and required for the update."
+      }
+    },
+    "scorer_fingerprint": {
+      "method": "llm-judge",
+      "method_version": "0.3",
+      "nli_model": "cross-encoder/nli-deberta-v3-small",
+      "nli_revision": "fa2804872c3b4bd748f38c0185cc85775361e735",
+      "judge_model": "accounts/fireworks/models/deepseek-v4-pro",
+      "judge_temperature": null
+    },
+    "taxonomy_counts": {
+      "faithful": 3
+    }
+  },
+  "counterfactual_diffs": [],
+  "trace_summary": {
+    "trace_count": 1,
+    "step_count": 3,
+    "flow_types": [
+      "generic"
+    ],
+    "time_range": [
+      "2026-01-01T00:00:01Z",
+      "2026-01-01T00:00:03Z"
+    ]
+  },
+  "signatures": [
+    {
+      "signer": "local-ed25519",
+      "algorithm": "ed25519",
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAI5jDF95PurqG3frXTdIACzE7bYAsdtXwyQMwlNxvl7o=\n-----END PUBLIC KEY-----\n",
+      "signature": "u8SMEFhaKkQ2o91nY5L+syFTql/swxEcjV3EVmBq68C5jDolu1b158QHSdCmSDY42N1u+1ZdiI8ysJTiOWpKCg==",
+      "issued_at": "2026-06-26T20:43:58.218792Z"
+    }
+  ]
+}

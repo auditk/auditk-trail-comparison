@@ -1,0 +1,68 @@
+{
+  "pack_id": "0f8b09c8-70c6-4175-80a2-920547beec18",
+  "spec_version": "v0.1",
+  "issued_at": "2026-06-26T20:43:58.260913Z",
+  "issuer": {
+    "name": "Matt Dawson",
+    "organization": "auditk Project",
+    "contact": null
+  },
+  "subject": {
+    "agent_config_ref": "tau2-bench-agent@0.1",
+    "agent_version": "0.1",
+    "tenant_id": null
+  },
+  "jurisdiction_claims": [],
+  "probe_results": [],
+  "drift_metrics": {
+    "drift_score": 1.0,
+    "drift_per_trace": {
+      "e120b573-2965-441a-bee5-91b873bd5847": 1.0
+    },
+    "flagged_steps": [
+      "e120b573-2965-441a-bee5-91b873bd5847:1"
+    ],
+    "method": "llm-judge",
+    "method_version": "0.3",
+    "per_step": {
+      "e120b573-2965-441a-bee5-91b873bd5847:1": {
+        "step_id": "e120b573-2965-441a-bee5-91b873bd5847:1",
+        "label": "goal_deviation",
+        "overturned_gate": false,
+        "reasoning": "Agent said it would check reservation details but fetched user details instead."
+      }
+    },
+    "scorer_fingerprint": {
+      "method": "llm-judge",
+      "method_version": "0.3",
+      "nli_model": "cross-encoder/nli-deberta-v3-small",
+      "nli_revision": "fa2804872c3b4bd748f38c0185cc85775361e735",
+      "judge_model": "accounts/fireworks/models/deepseek-v4-pro",
+      "judge_temperature": null
+    },
+    "taxonomy_counts": {
+      "goal_deviation": 1
+    }
+  },
+  "counterfactual_diffs": [],
+  "trace_summary": {
+    "trace_count": 1,
+    "step_count": 1,
+    "flow_types": [
+      "generic"
+    ],
+    "time_range": [
+      "2026-01-01T00:00:01Z",
+      "2026-01-01T00:00:01Z"
+    ]
+  },
+  "signatures": [
+    {
+      "signer": "local-ed25519",
+      "algorithm": "ed25519",
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAI5jDF95PurqG3frXTdIACzE7bYAsdtXwyQMwlNxvl7o=\n-----END PUBLIC KEY-----\n",
+      "signature": "hHSlujgWB7HD2CE9RjwiL3McbUm66S7xV+7NRl1JJriG4pOqHWB/jUXVCCyd1uCDjg92iqvMqJ/oIzSs2eE/Dw==",
+      "issued_at": "2026-06-26T20:43:58.260970Z"
+    }
+  ]
+}
