@@ -628,6 +628,43 @@
 
   .kbd-hint { font-size: 11px; color: var(--muted); margin-left: auto; }
 
+  /* ── Domain selector ────────────────────────────────────── */
+  #domain-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  .domain-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.15s;
+    user-select: none;
+  }
+  .domain-label:hover { border-color: var(--accent); }
+  .domain-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .domain-hint {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+    margin-left: auto;
+  }
+
   /* ── Done screen ─────────────────────────────────────── */
   #done-card h1 { color: var(--faithful); margin-bottom: 12px; }
   #done-stats {
@@ -673,6 +710,22 @@
   </div>
 </div>
 
+<!-- ── Domain selector overlay ───────────────────────────── -->
+<div class="overlay hidden" id="domain-overlay">
+  <div class="card">
+    <h1>Select domains to annotate</h1>
+    <p>Choose which domains to include in your session.</p>
+    <div id="domain-checks">
+      <label class="domain-label"><input type="checkbox" value="airline" checked> airline</label>
+      <label class="domain-label"><input type="checkbox" value="retail" checked> retail</label>
+      <label class="domain-label"><input type="checkbox" value="telecom"> telecom <span class="domain-hint">lower annotation reliability</span></label>
+      <label class="domain-label"><input type="checkbox" value="coding"> coding <span class="domain-hint">lower annotation reliability</span></label>
+    </div>
+    <button class="btn-tax" id="btn-begin" style="width:100%;justify-content:center;padding:12px;"
+            onclick="confirmDomains()">Begin →</button>
+  </div>
+</div>
+
 <!-- ── Loading overlay ───────────────────────────────────── -->
 <div class="overlay" id="loading-overlay">
   <div class="card">
@@ -685,7 +738,7 @@
 <div class="overlay hidden" id="done-overlay">
   <div class="card" id="done-card">
     <h1>Annotation Complete!</h1>
-    <p>All 361 steps labelled. Download your results below.</p>
+    <p id="done-subtitle">All steps labelled. Download your results below.</p>
     <div id="done-stats"></div>
     <button id="btn-download" onclick="downloadResults()">Download JSON</button>
   </div>
@@ -893,7 +946,7 @@ let annotations     = [];   // server-synced in-memory copy
 let currentSessRank = null;
 let policyCache     = {};
 
-const TOTAL = 361;
+let TOTAL = 0;
 
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -916,8 +969,16 @@ function startAnnotation() {
   annotator = name;
   localStorage.setItem('auditk_annotator', name);
   document.getElementById('setup-overlay').classList.add('hidden');
+  document.getElementById('domain-overlay').classList.remove('hidden');
+}
+
+function confirmDomains() {
+  const checked = [...document.querySelectorAll('#domain-checks input[type="checkbox"]:checked')]
+    .map(cb => cb.value);
+  if (!checked.length) return;
+  document.getElementById('domain-overlay').classList.add('hidden');
   document.getElementById('loading-overlay').classList.remove('hidden');
-  loadData();
+  loadData(checked);
 }
 
 // ── Migration from localStorage ────────────────────────────
@@ -942,7 +1003,7 @@ async function migrateLocalStorage() {
 }
 
 // ── Load data ──────────────────────────────────────────────
-async function loadData() {
+async function loadData(domains) {
   const msg = document.getElementById('load-msg');
   try {
     msg.textContent = 'Fetching gold_set_sessions.jsonl…';
@@ -955,7 +1016,8 @@ async function loadData() {
       .filter(l => l.trim())
       .map(l => JSON.parse(l));
     raw.sort((a, b) => a.session_rank - b.session_rank || a.step_number - b.step_number);
-    steps = raw;
+    steps = raw.filter(s => domains.includes(s.domain));
+    TOTAL = steps.length;
 
     const byRank = {};
     for (const s of steps) {
@@ -1334,6 +1396,9 @@ document.addEventListener('keydown', e => {
 
 // ── Done screen ────────────────────────────────────────────
 function showDone() {
+  document.getElementById('done-subtitle').textContent =
+    `All ${TOTAL} steps labelled. Download your results below.`;
+
   const labelCounts = {}, domainCounts = {};
   let flagCount = 0;
   for (const a of annotations) {
