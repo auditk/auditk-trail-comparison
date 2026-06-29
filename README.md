@@ -29,13 +29,16 @@ src/
   sample_gold_set.py              Samples the curated gold set from judged steps
   patch_gold_set_opening.py       Patches user opening messages into the gold set
 
-compute_trail_metrics.py   Cross-taxonomy comparison script (separate experiment)
-requirements.txt           Python dependencies
+compute_trail_metrics.py      Cross-taxonomy comparison script (separate experiment)
+requirements-annotate.txt     Minimal dependencies for the annotation tool (Flask only)
+requirements.txt              Full pinned lockfile for the research pipeline (Linux)
 ```
 
 ---
 
 ## Setup
+
+**For annotators (Mac or Linux):**
 
 ```bash
 # 1. Clone
@@ -46,8 +49,8 @@ cd auditk-trail-comparison
 python -m venv .venv
 source .venv/bin/activate
 
-# 3. Install dependencies
-pip install -r requirements.txt
+# 3. Install annotation dependencies (Flask only — cross-platform)
+pip install -r requirements-annotate.txt
 
 # 4. Start the annotation server
 bash annotation_tool/serve.sh
@@ -56,7 +59,11 @@ bash annotation_tool/serve.sh
 # http://localhost:8765
 ```
 
-The server must be started from the project root via `serve.sh`. Do not run `server.py` directly from inside `annotation_tool/` -- the server resolves data paths relative to the project root.
+> **Note:** Use `requirements-annotate.txt`, not `requirements.txt`. The full
+> `requirements.txt` is a Linux-pinned lockfile for the research pipeline and
+> will fail on macOS.
+
+The server must be started from the project root via `serve.sh`. Do not run `server.py` directly from inside `annotation_tool/` — the server resolves data paths relative to the project root.
 
 ---
 
